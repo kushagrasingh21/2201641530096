@@ -1,27 +1,36 @@
 // LoggingMiddleware/logger.js
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 const LOG_FILE = path.join(__dirname, 'logs.txt');
 
+// Fixed values for this server instance
+const ACCESS_CODE = "sAWTuR";
+const CLIENT_ID = uuidv4();
+
 function safeStringify(obj) {
-  try { return JSON.stringify(obj); } catch (e) { return '"[unserializable]"'; }
+  try {
+    return JSON.stringify(obj);
+  } catch (e) {
+    return '"[unserializable]"';
+  }
 }
 
 function logger(req, res, next) {
   const start = Date.now();
 
-  // Attach listener for when response finishes to record status and duration
   res.on('finish', () => {
     const durationMs = Date.now() - start;
     const entry = {
+      accessCode: ACCESS_CODE,
+      clientId: CLIENT_ID,
       timestamp: new Date().toISOString(),
       method: req.method,
       path: req.originalUrl,
       ip: req.ip,
       status: res.statusCode,
       durationMs,
-      // record small request details; body may be large but we keep it
       body: req.body,
       headers: {
         'user-agent': req.get('User-Agent'),
@@ -32,7 +41,7 @@ function logger(req, res, next) {
     try {
       fs.appendFileSync(LOG_FILE, safeStringify(entry) + '\n');
     } catch (err) {
-      // swallow logging errors: don't crash app
+      // Don't crash app on logging error
     }
   });
 
